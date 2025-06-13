@@ -29,7 +29,7 @@ class EventAvailability(models.Model):
     category = models.ForeignKey(EventCategory, on_delete=models.CASCADE)
     time_slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='AVAILABLE')
-
+    date = models.DateField(null=True)
     class Meta:
         db_table = 'event_availability'
 

@@ -2,8 +2,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import EventCategory, TimeSlot, UserBooking
-from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer
+from .models import EventCategory, TimeSlot, UserBooking, EventAvailability
+from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer, EventAvailabilitySerializer
 from django.shortcuts import get_object_or_404
 
 
@@ -160,3 +160,35 @@ class UserBookingHistoryView(APIView):
         bookings = UserBooking.objects.filter(user=request.user).order_by('-booked_at')
         serializer = UserBookingSerializer(bookings, many=True)
         return Response({'bookings': serializer.data}, status=status.HTTP_200_OK)
+
+
+class EventAvailabilityListView(APIView):
+    def get(self, request):
+        dates = request.GET.getlist('dates') or request.GET.get('dates', '').split(',')
+        if not dates:
+            return Response({'result': 'Failed', 'message': 'Date range required'}, status=400)
+
+        slots = EventAvailability.objects.filter(date__in=dates).select_related('category', 'time_slot')
+
+        data = [
+            {
+                'id': s.id,
+                'date': s.date,
+                'slot': s.time_slot.name,
+                'slot_id': s.time_slot.id,
+                'category': {'id': s.category.id, 'name': s.category.name} if s.category else None,
+                'status': s.status
+            } for s in slots
+        ]
+        return Response({'result': 'Success', 'data': data})
+
+class EventAvailabilityCreateView(APIView):
+    def post(self, request):
+        try:
+            serializer = EventAvailabilitySerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'result': 'Success', 'data': serializer.data})
+            return Response({'result': 'Failed', 'message': 'Validation error', 'errors': serializer.errors}, status=400)
+        except Exception as e:
+            return Response({'result': 'Failed', 'message': 'Server error', 'error': str(e)}, status=500)

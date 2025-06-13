@@ -33,3 +33,4 @@ class UserBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserBooking
         fields = ['id', 'event', 'status', 'booked_at', 'cancelled_at']
+

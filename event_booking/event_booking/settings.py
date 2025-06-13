@@ -30,7 +30,7 @@ ALLOWED_HOSTS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5173",
+    "http://localhost:5173",
 ]
 # Application definition
 
@@ -53,9 +53,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
     'corsheaders.middleware.CorsMiddleware',
 ]
-
 ROOT_URLCONF = 'event_booking.urls'
 
 TEMPLATES = [
@@ -76,6 +76,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'event_booking.wsgi.application'
 
+AUTH_USER_MODEL = 'booking_app.User'
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -87,6 +89,7 @@ DATABASES = {
     }
 }
 
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -118,6 +121,31 @@ USE_I18N = True
 
 USE_TZ = True
 
+# CORS_ALLOW_HEADERS = (
+#     'accept',
+#     'accept-encoding',
+#     'authorization',
+#     'content-type',
+#     'dnt',
+#     'origin',
+#     'user-agent',
+#     'x-csrftoken',
+#     'x-requested-with',
+#     'Access-Control-Allow-Origin',
+#     '_auth_user_id',
+#     'csrftoken',
+#     'set-cookie',
+#     'cookies',
+#     'cookie',
+#     'timestamp',
+#     'version',
+#     'platform',
+#     'android-version'
+# )
+
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
+CORS_ORIGIN_WHITELIST =['http://localhost:5173', 'http://127.0.0.1:5173']
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/

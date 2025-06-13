@@ -13,6 +13,7 @@ const HomeComponent = () => {
             setMessage("Error connecting to backend")
         })
     }, [])
+    
     return (
         <p>
             {console.log('hii')}

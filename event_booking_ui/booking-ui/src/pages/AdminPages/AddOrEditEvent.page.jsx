@@ -1,171 +1,123 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// React CalendarSlotManager.jsx
+import React, { useEffect, useState } from 'react';
+import useAxios from '../../useAxios';
+import { Modal, Button, Form } from 'react-bootstrap';
 
-const EventAvailabilityForm = () => {
-  const [slots, setSlots] = useState(
-    [
-  { "id": 1, "start_time": "09:00", "end_time": "10:00" },
-  { "id": 2, "start_time": "10:00", "end_time": "11:00" },
-  { "id": 3, "start_time": "11:00", "end_time": "12:00" },
-  { "id": 4, "start_time": "14:00", "end_time": "15:00" }
-]
+const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  );
-  const [categories, setCategories] = useState(
-    [
-  { "id": 1, "name": "Cat 1" },
-  { "id": 2, "name": "Cat 2" },
-  { "id": 3, "name": "Cat 3" }
-]
+const CalendarSlotManager = () => {
+  const [weekDates, setWeekDates] = useState([]);
+  const [availability, setAvailability] = useState([]);
+  const [categories, setCategories] = useState([]);
 
-  );
-  const [category, setCategory] = useState('');
-  const [slot, setSlot] = useState('');
-  const [editId, setEditId] = useState(null);
-  const [availabilities, setAvailabilities] = useState(
-    [
-  {
-    "id": 1,
-    "category": 1,
-    "category_name": "Cat 1",
-    "slot": 2,
-    "slot_time": "10:00 - 11:00",
-    "status": "Available"
-  },
-  {
-    "id": 2,
-    "category": 2,
-    "category_name": "Cat 2",
-    "slot": 3,
-    "slot_time": "11:00 - 12:00",
-    "status": "Booked"
-  },
-  {
-    "id": 3,
-    "category": 3,
-    "category_name": "Cat 3",
-    "slot": 4,
-    "slot_time": "14:00 - 15:00",
-    "status": "Available"
-  }
-]
+  const [showModal, setShowModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-  );
+  const [availResp, availError, , fetchAvailability] = useAxios();
+  const [catResp, catError, , fetchCategories] = useAxios();
+  const [submitResp, submitError, , submitAvailability] = useAxios();
 
-//   useEffect(() => {
-//     fetchCategories();
-//     fetchSlots();
-//     fetchAvailabilities();
-//   }, []);
+  useEffect(() => {
+    const today = new Date();
+    const start = new Date(today.setDate(today.getDate() - today.getDay()));
+    const dates = [...Array(7)].map((_, i) => {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      return d.toISOString().split('T')[0];
+    });
+    setWeekDates(dates);
+    fetchAvailability({ method: 'GET', url: '/api/availability/', params: { dates } });
+    fetchCategories({ method: 'GET', url: '/api/categories/' });
+  }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await axios.get('/api/categories/');
-      setCategories(res.data);
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
-    }
+  useEffect(() => {
+    if (availResp?.result === 'Success') setAvailability(availResp.data);
+    if (catResp?.result === 'Success') setCategories(catResp.data);
+  }, [availResp, catResp]);
+
+  const handleSlotClick = (date, slot) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (date < todayStr) return;
+    setSelectedSlot({ date, slot });
+    setShowModal(true);
   };
 
-  const fetchSlots = async () => {
-    try {
-      const res = await axios.get('/api/timeslots/');
-      setSlots(res.data);
-    } catch (err) {
-      console.error('Failed to fetch slots:', err);
-    }
-  };
-
-  const fetchAvailabilities = async () => {
-    try {
-      const res = await axios.get('/api/availability/');
-      setAvailabilities(res.data);
-    } catch (err) {
-      console.error('Failed to fetch availability:', err);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const payload = { category, slot };
-    try {
-      if (editId) {
-        await axios.put(`/api/availability/${editId}/`, payload);
-        alert('Availability updated');
-      } else {
-        await axios.post('/api/availability/', payload);
-        alert('Availability saved');
+  const handleSave = () => {
+    if (!selectedSlot || !selectedCategory) return;
+    submitAvailability({
+      method: 'POST',
+      url: '/api/availability/',
+      data: {
+        date: selectedSlot.date,
+        time_slot: selectedSlot.slot_id,
+        category: selectedCategory
       }
-      setCategory('');
-      setSlot('');
-      setEditId(null);
-      fetchAvailabilities();
-    } catch (err) {
-      console.error('Save failed:', err);
-    }
+    });
+    setShowModal(false);
   };
 
-  const handleEdit = (item) => {
-    setCategory(item.category);
-    setSlot(item.slot);
-    setEditId(item.id);
+  const getSlotData = (date, slotName) => {
+    return availability.find(a => a.date === date && a.slot === slotName);
   };
 
-  const handleAddNew = () => {
-    setCategory('');
-    setSlot('');
-    setEditId(null);
-  };
+  const slots = ['Morning', 'Afternoon', 'Evening'];
 
   return (
     <div className="container mt-5">
-      <div className="row justify-content-center">
-        <div className="col-md-4">
-          <div className="card p-4 shadow" style={{ height: 'fit-content' }}>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4 className="mb-0">{editId ? 'Edit' : 'Add'} Event Availability</h4>
-              {editId && (
-                <button className="btn btn-sm btn-outline-primary" onClick={handleAddNew}>Add New</button>
-              )}
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Category</label>
-                <select className="form-control" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                  <option value="">Select</option>
-                  {categories?.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group mt-3">
-                <label>Time Slot</label>
-                <select className="form-control" value={slot} onChange={(e) => setSlot(e.target.value)} required>
-                  <option value="">Select</option>
-                  {slots?.map(s => (
-                    <option key={s.id} value={s.id}>{s.start_time} - {s.end_time}</option>
-                  ))}
-                </select>
-              </div>
-              <button className="btn btn-primary mt-3 w-100">{editId ? 'Update' : 'Save'}</button>
-            </form>
-          </div>
-        </div>
-
-        <div className="col-md-6">
-          <h5>Existing Availabilities</h5>
-          <ul className="list-group">
-            {availabilities?.map(item => (
-              <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
-                Category {item.category_name} | Slot {item.slot_time}
-                <button className="btn btn-sm btn-outline-secondary" onClick={() => handleEdit(item)}>Edit</button>
-              </li>
+      <h4 className="mb-4">Weekly Event Availability</h4>
+      <div className="table-responsive">
+        <table className="table table-bordered text-center">
+          <thead>
+            <tr>
+              <th>Slot \ Date</th>
+              {weekDates.map((d, i) => (
+                <th key={i}>{daysOfWeek[i]}<br />{d}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {slots.map(slot => (
+              <tr key={slot}>
+                <td><strong>{slot}</strong></td>
+                {weekDates.map(date => {
+                  const slotData = getSlotData(date, slot);
+                  const statusClass = slotData?.status === 'Booked' ? 'btn-success' : (slotData?.category ? 'btn-warning' : 'btn-outline-secondary');
+                  return (
+                    <td key={date}>
+                      <button
+                        className={`btn btn-sm ${statusClass} w-100`}
+                        onClick={() => handleSlotClick(date, slotData?.slot_id || slot)}
+                        disabled={new Date(date) < new Date().setHours(0,0,0,0)}
+                      >
+                        {slotData?.category?.name || 'Add'}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
             ))}
-          </ul>
-        </div>
+          </tbody>
+        </table>
       </div>
+
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Map Category to Slot</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+            <option value="">Select Category</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Form.Select>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave}>Save</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
 
-export default EventAvailabilityForm;
+export default CalendarSlotManager;
