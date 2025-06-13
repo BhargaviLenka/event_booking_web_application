@@ -12,51 +12,144 @@ class IsAdminUser(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_admin
 
 
-class EventCategoryCreateUpdateView(APIView):
+class EventCategoryView(APIView):
+
+    @staticmethod
+    def get(request):
+        try:
+            categories = EventCategory.objects.all()
+            serializer = EventCategorySerializer(categories, many=True)
+            return Response({'data': serializer.data,"result":"Success"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'result': 'Failed',
+                'message': 'Internal Server Error',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @staticmethod
+    def post(request):
+        try:
+            serializer = EventCategorySerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'result': 'Success',
+                    'message': 'Category created',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            return Response({
+                'result': 'Failed',
+                'message': 'Validation error',
+                'errors': serializer.errors
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'result': 'Failed',
+                'message': 'Internal Server Error',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @staticmethod
+    def put(request, pk):
+        try:
+            try:
+                category = EventCategory.objects.get(pk=pk)
+            except EventCategory.DoesNotExist:
+                return Response({
+                    'result': 'Failed',
+                    'message': 'Category not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = EventCategorySerializer(instance=category, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'result': 'Success',
+                    'message': 'Category updated',
+                    'data': serializer.data
+                })
+            return Response({
+                'result': 'Failed',
+                'message': 'Validation error',
+                'errors': serializer.errors
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'result': 'Failed',
+                'message': 'Internal Server Error',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TimeSlotView(APIView):
     permission_classes = [IsAdminUser]
 
-    def post(self, request):
-        # Create a new event category
-        serializer = EventCategorySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Event category created', 'data': serializer.data},
-                            status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    @staticmethod
+    def get(request):
+        try:
+            slots = TimeSlot.objects.all()
+            serializer = TimeSlotSerializer(slots, many=True)
+            return Response({
+                'status': 'Success',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': 'Failed',
+                'message': 'Error fetching time slots',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def put(self, request, pk=None):
-        # Edit an existing event category
-        if not pk:
-            return Response({'error': 'Category ID (pk) required for update.'}, status=status.HTTP_400_BAD_REQUEST)
+    @staticmethod
+    def post(request):
+        try:
+            serializer = TimeSlotSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status': 'Success',
+                    'message': 'Time slot created',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            return Response({
+                'status': 'Failed',
+                'message': 'Validation error',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'status': 'Failed',
+                'message': 'Error creating time slot',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        category = get_object_or_404(EventCategory, pk=pk)
-        serializer = EventCategorySerializer(category, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Event category updated', 'data': serializer.data}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    @staticmethod
+    def put(request, pk):
+        try:
+            slot = get_object_or_404(TimeSlot, pk=pk)
+            serializer = TimeSlotSerializer(slot, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status': 'Success',
+                    'message': 'Time slot updated',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
 
-
-class TimeSlotCreateUpdateView(APIView):
-    permission_classes = [IsAdminUser]
-
-    def post(self, request):
-        serializer = TimeSlotSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Time slot created', 'data': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def put(self, request, pk=None):
-        if not pk:
-            return Response({'error': 'Time slot ID (pk) required for update.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        slot = get_object_or_404(TimeSlot, pk=pk)
-        serializer = TimeSlotSerializer(slot, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Time slot updated', 'data': serializer.data}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'Failed',
+                'message': 'Validation error',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'status': 'Failed',
+                'message': 'Error updating time slot',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserBookingHistoryView(APIView):

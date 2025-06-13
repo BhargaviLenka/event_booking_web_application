@@ -7,6 +7,8 @@ class EventCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = EventCategory
         fields = ['id', 'name']
+        read_only_fields = ['id']
+
 
 
 class TimeSlotSerializer(serializers.ModelSerializer):

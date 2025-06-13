@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import EventCategoryCreateUpdateView, TimeSlotCreateUpdateView
+from .views import EventCategoryView, TimeSlotView
 
 urlpatterns = [
-    path('categories/', EventCategoryCreateUpdateView.as_view()),
-    path('categories/<int:pk>/', EventCategoryCreateUpdateView.as_view()),
-    path('timeslots/', TimeSlotCreateUpdateView.as_view()),
-    path('timeslots/<int:pk>/', TimeSlotCreateUpdateView.as_view())
+    path('categories/', EventCategoryView.as_view()),
+    path('categories/<int:pk>/', EventCategoryView.as_view()),
+    path('timeslots/', TimeSlotView.as_view()),
+    path('timeslots/<int:pk>/', TimeSlotView.as_view()),
+
 ]
