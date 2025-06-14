@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import EventCategoryView, TimeSlotView, EventAvailabilityCreateView, CheckSessionView, LoginView, \
-    RegisterView
+from .views import (EventCategoryView, TimeSlotView, EventAvailabilityCreateView, UserBookingAPIView,
+                    CheckSessionView, LoginView, RegisterView)
+
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
@@ -11,6 +12,6 @@ urlpatterns = [
     path('timeslots/', TimeSlotView.as_view()),
     path('timeslots/<int:pk>/', TimeSlotView.as_view()),
     path('availability/', EventAvailabilityCreateView.as_view()),
-
+    path('user-bookings/', UserBookingAPIView.as_view(), name='user-bookings')
 
 ]

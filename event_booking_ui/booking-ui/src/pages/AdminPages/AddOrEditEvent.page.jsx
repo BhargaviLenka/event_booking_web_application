@@ -1,7 +1,8 @@
 // React CalendarSlotManager.jsx
 import React, { useEffect, useState } from 'react';
 import useAxios from '../../useAxios';
-import { Modal, Button, Form } from 'react-bootstrap';
+import { Modal, Button, Form, Toast, ToastContainer, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Plus, Trash } from 'lucide-react';
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -10,6 +11,7 @@ const CalendarSlotManager = () => {
   const [availability, setAvailability] = useState([]);
   const [categories, setCategories] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
   const [showModal, setShowModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -21,7 +23,9 @@ const CalendarSlotManager = () => {
   const [submitResp, submitError, , submitAvailability] = useAxios();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
-    const start = new Date(today.setDate(today.getDate() - today.getDay()));
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(today.setDate(diff));
     start.setHours(0, 0, 0, 0);
     return start;
   });
@@ -34,26 +38,9 @@ const CalendarSlotManager = () => {
     });
     setWeekDates(dates);
     fetchAvailability({ method: 'GET', url: '/api/availability/', params: { dates } });
-  }, [currentWeekStart]); 
+  }, [currentWeekStart]);
 
   useEffect(() => {
-    fetchCategories({ method: 'GET', url: '/api/categories/' });
-  }, []);
-
-  useEffect(() => {
-    fetchSlots({ method: 'GET', url: '/api/timeslots/' });
-  }, []);
-
-  useEffect(() => {
-    const today = new Date();
-    const start = new Date(today.setDate(today.getDate() - today.getDay()));
-    const dates = [...Array(7)].map((_, i) => {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      return d.toISOString().split('T')[0];
-    });
-    setWeekDates(dates);
-    fetchAvailability({ method: 'GET', url: '/api/availability/', params: { dates } });
     fetchCategories({ method: 'GET', url: '/api/categories/' });
     fetchSlots({ method: 'GET', url: '/api/timeslots/' });
   }, []);
@@ -64,11 +51,12 @@ const CalendarSlotManager = () => {
     if (slotResp?.status === 'Success') setSlots(slotResp?.data);
   }, [availResp, catResp, slotResp]);
 
-  const handleSlotClick = (date, slot) => {
-    console.log(slot,'hi')
+  const handleSlotClick = (date, slotId) => {
+    const slotData = getSlotData(date, slotId);
+    if (slotData?.status === 'Booked') return;
     const todayStr = new Date().toISOString().split('T')[0];
     if (date < todayStr) return;
-    setSelectedSlot({ date, slot });
+    setSelectedSlot({ date, slot: slotId });
     setShowModal(true);
   };
 
@@ -84,13 +72,27 @@ const CalendarSlotManager = () => {
       }
     });
     setShowModal(false);
+    showToast('Slot saved successfully!', 'success');
   };
 
   const getSlotData = (date, slotId) => {
     return availability.find(a => a.date === date && a.time_slot.id === slotId);
   };
 
-  // const slots = ['Morning', 'Afternoon', 'Evening'];
+  const handleDeleteSlot = (date, slotId) => {
+    setSelectedSlot({ date, slot: slotId });
+    setToast({ show: true, message: 'Click to confirm deletion.', variant: 'danger', confirmDelete: true });
+  };
+
+  const confirmDelete = () => {
+    if (!selectedSlot) return;
+    submitAvailability({
+      method: 'DELETE',
+      url: '/api/availability/',
+      data: { date: selectedSlot.date, time_slot: selectedSlot.slot }
+    });
+    setToast({ show: true, message: 'Slot deleted successfully.', variant: 'success' });
+  };
 
   const handlePrevWeek = () => {
     const prev = new Date(currentWeekStart);
@@ -105,62 +107,70 @@ const CalendarSlotManager = () => {
   };
 
   const formatTime = (timeStr) => {
-  const [hour, minute] = timeStr.split(':');
-  const h = parseInt(hour, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${minute} ${ampm}`;
-};
+    const [hour, minute] = timeStr.split(':');
+    const h = parseInt(hour, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12}:${minute} ${ampm}`;
+  };
+
+  const showToast = (message, variant = 'success') => {
+    setToast({ show: true, message, variant });
+  };
 
   return (
     <div className="container mt-5">
       <h4 className="mb-4">Weekly Event Availability</h4>
-      <div className="d-flex justify-content-between align-items-center mb-2">
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <Button variant="outline-primary" size="sm" onClick={handlePrevWeek}>Previous Week</Button>
-        <span>
-          {weekDates[0]} &ndash; {weekDates[6]}
-        </span>
+        <span className="fw-bold text-secondary">{weekDates[0]} &ndash; {weekDates[6]}</span>
         <Button variant="outline-primary" size="sm" onClick={handleNextWeek}>Next Week</Button>
       </div>
-      <div className="table-responsive">
-        <table className="table table-bordered text-center">
-          <thead>
-            <tr>
-              <th>Slot \ Date</th>
-              {weekDates.map((d, i) => (
-                <th key={i}>{daysOfWeek[i]}<br />{d}</th>
-              ))}
-            </tr>
-          </thead>
-         <tbody>
-          {slots.map(slot => (
-            <tr key={slot.id}>
-              <td>
-                <strong>
-                  {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                </strong>
-              </td>
-              {weekDates.map(date => {
+      <div className="row g-3">
+        {weekDates.map(date => (
+          <div className="col-12 col-md-6 col-lg-4" key={date}>
+            <div className="bg-light p-3 rounded shadow-sm">
+              <h6 className="fw-bold text-center mb-3">{date}</h6>
+              {slots.map(slot => {
                 const slotData = getSlotData(date, slot.id);
-                const statusClass = slotData?.status === 'Booked'
-                  ? 'btn-success'
-                  : (slotData?.category ? 'btn-warning' : 'btn-outline-secondary');
+                const isBooked = slotData?.status === 'Booked';
+                const isAvailableWithUser = slotData?.user?.name && !isBooked;
+                const isBackDate = new Date(date) < new Date(new Date().setHours(0, 0, 0, 0));
+
                 return (
-                  <td key={date}>
-                    <button
-                      className={`btn btn-sm ${statusClass} w-100`}
-                      onClick={() => handleSlotClick(date, slot.id)}
-                      disabled={new Date(date) < new Date().setHours(0, 0, 0, 0)}
-                    >
-                      {slotData?.category?.name || 'Add'}
-                    </button>
-                  </td>
+                  <div key={slot.id} className="position-relative border rounded p-2 mb-2 bg-white shadow-sm">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="fw-semibold">
+                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      </div>
+                      {!isBooked && !isBackDate && (
+                        <div>
+                          <Plus role="button" size={16} onClick={() => handleSlotClick(date, slot.id)} className="me-2 text-success" />
+                          {slotData && (
+                            <Trash role="button" size={16} onClick={() => handleDeleteSlot(date, slot.id)} className="text-danger" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-1 small text-muted">
+                      {isBooked ? (
+                        <>
+                          <div className="text-success">Booked</div>
+                          {slotData?.user?.name && <div className="fw-medium">{slotData.user.name}</div>}
+                        </>
+                      ) : (
+                        <>
+                          {slotData?.category?.name && <div className="text-primary">{slotData.category.name}</div>}
+                          {slotData?.user?.name && <div className="fw-medium">{slotData.user.name}</div>}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-            </tr>
-          ))}
-        </tbody>
-        </table>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Modal show={showModal} onHide={() => setShowModal(false)}>
@@ -178,6 +188,19 @@ const CalendarSlotManager = () => {
           <Button variant="primary" onClick={handleSave}>Save</Button>
         </Modal.Footer>
       </Modal>
+
+      <ToastContainer position="bottom-end" className="p-3">
+        <Toast onClose={() => setToast({ ...toast, show: false })} show={toast.show} bg={toast.variant} delay={3000} autohide>
+          <Toast.Body>
+            {toast.message}
+            {toast.confirmDelete && (
+              <div className="mt-2">
+                <Button variant="light" size="sm" onClick={confirmDelete}>Confirm Delete</Button>
+              </div>
+            )}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
   );
 };

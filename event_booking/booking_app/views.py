@@ -1,5 +1,7 @@
 from datetime import datetime, time
 from django.contrib.auth import authenticate, login, logout
+
+from django.utils import timezone
 from django.utils.timezone import now
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -209,7 +211,7 @@ class EventAvailabilityCreateView(APIView):
         if not dates:
             return Response({'result': 'Failed', 'message': 'Date range required'}, status=400)
 
-        availability = EventAvailability.objects.filter(date__in=dates).select_related('category', 'time_slot')
+        availability = EventAvailability.objects.filter(date__in=dates).select_related('category', 'time_slot').prefetch_related('user_booking__user')
         serializer = EventAvailabilitySerializer(availability, many=True)
 
         return Response({'result': 'Success', 'data': serializer.data})
@@ -265,7 +267,7 @@ class EventAvailabilityCreateView(APIView):
                     date=selected_date,
                     time_slot_id= int(time_slot_id),
                     category_id= int(category_id))
-                new_data = EventAvailabilitySerializer(data=data_)
+                new_data = EventAvailabilitySerializer(data_)
                 return Response({
                     'result': 'Success',
                     'data': new_data,
@@ -283,6 +285,52 @@ class EventAvailabilityCreateView(APIView):
                 'message': 'Internal server error.',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserBookingAPIView(APIView):
+    # permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """List all bookings of the logged-in user."""
+        bookings = UserBooking.objects.filter(user=request.user).select_related('event')
+        serializer = UserBookingSerializer(bookings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        """Create a new booking."""
+        # id = User.objects.create(username="Bhargavi", email="bhargavilenka123@gmail.com", password="bhargavi").pk
+        data = {
+            "user": id,
+            "event": 2,
+            "status": "ACTIVE"
+          }
+        serializer = UserBookingSerializer(data=request.data)
+        if serializer.is_valid():
+            event = serializer.validated_data['event']
+            if event.date < timezone.now().date():
+                return Response({"error": "Cannot book past events."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Prevent duplicate booking
+            exists = UserBooking.objects.filter(user_id=data.get('user'), event=event, status='ACTIVE').exists()
+            if exists:
+                return Response({"error": "You already booked this event."}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer.save(user_id=request.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        """Cancel a booking."""
+        booking_id = request.data.get("id")
+        try:
+            booking = UserBooking.objects.get(id=booking_id, user=request.user)
+            if booking.status == 'CANCELLED':
+                return Response({"detail": "Booking already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+            booking.status = 'CANCELLED'
+            booking.cancelled_at = timezone.now()
+            booking.save()
+            return Response({"detail": "Booking cancelled successfully."}, status=status.HTTP_200_OK)
+        except UserBooking.DoesNotExist:
+            return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CheckSessionView(APIView):

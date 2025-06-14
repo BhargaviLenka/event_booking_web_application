@@ -40,7 +40,7 @@ class UserBooking(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    event = models.ForeignKey(EventAvailability, on_delete=models.CASCADE)
+    event = models.ForeignKey(EventAvailability, on_delete=models.CASCADE, related_name='user_booking')
     booked_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
     cancelled_at = models.DateTimeField(null=True, blank=True)
