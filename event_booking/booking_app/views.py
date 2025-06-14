@@ -1,11 +1,11 @@
 from datetime import datetime, time
-
+from django.contrib.auth import authenticate, login, logout
 from django.utils.timezone import now
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import EventCategory, TimeSlot, UserBooking, EventAvailability
+from .models import EventCategory, TimeSlot, UserBooking, EventAvailability, User
 from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer, EventAvailabilitySerializer
 from django.shortcuts import get_object_or_404
 
@@ -198,16 +198,7 @@ class EventAvailabilityListView(APIView):
         ]
         return Response({'result': 'Success', 'data': data})
 
-# class EventAvailabilityCreateView(APIView):
-#     def post(self, request):
-#         try:
-#             serializer = EventAvailabilitySerializer(data=request.data)
-#             if serializer.is_valid():
-#                 serializer.save()
-#                 return Response({'result': 'Success', 'data': serializer.data})
-#             return Response({'result': 'Failed', 'message': 'Validation error', 'errors': serializer.errors}, status=400)
-#         except Exception as e:
-#             return Response({'result': 'Failed', 'message': 'Server error', 'error': str(e)}, status=500)
+
 
 
 class EventAvailabilityCreateView(APIView):
@@ -292,3 +283,69 @@ class EventAvailabilityCreateView(APIView):
                 'message': 'Internal server error.',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CheckSessionView(APIView):
+    @staticmethod
+    def get(request):
+        try:
+            if request.user.is_authenticated:
+                return Response({
+                    'authenticated': True,
+                    'username': request.user.username,
+                    'is_admin': request.user.is_admin
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({'authenticated': False}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class LoginView(APIView):
+
+    @staticmethod
+    def post(request):
+        try:
+            email = request.data.get('email')
+            password = request.data.get('password')
+
+            user = authenticate(request, username=email, password=password)
+            if user is not None:
+                login(request, user)
+                return Response({'message': 'Login successful', 'is_admin': user.is_admin})
+            else:
+                return Response({'authenticated': False, 'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        except Exception as e:
+            return Response({'error': 'Something went wrong.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class RegisterView(APIView):
+
+    @staticmethod
+    def post(request):
+        try:
+            name = request.data.get('name')
+            email = request.data.get('email')
+            password = request.data.get('password')
+
+            if User.objects.filter(username=email).exists():
+                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.create_user(username=email, email=email, password=password, first_name=name)
+            user.save()
+
+            return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LogoutView(APIView):
+    @staticmethod
+    def post(request):
+        try:
+            logout(request)
+            return Response({'message': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

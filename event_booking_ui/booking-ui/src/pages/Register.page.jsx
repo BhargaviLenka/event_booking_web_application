@@ -1,7 +1,7 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import useAxios from '../useAxios';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +13,7 @@ const Register = () => {
 
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [response, apiError, loading, fetchData] = useAxios();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,28 +22,50 @@ const Register = () => {
 
   const handleRegister = (e) => {
     e.preventDefault();
-      console.log(!formData.name || !formData.email || !formData.password || !formData.confirmPassword)
 
+    // Frontend validations
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Please fill in all fields.');
-      console.log(error)
       return;
     }
-
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
     setError('');
-    // Send API call here
-    navigate('/calendar');
+
+    // Call backend API
+    fetchData({
+      method: 'POST',
+      url: '/register/',   // 🔧 your DRF endpoint
+      data: {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      }
+    });
   };
+
+  // Watch for success response
+  useEffect(() => {
+    if (response?.message) {
+      // Redirect to login after successful registration
+      navigate('/');
+    }
+  }, [response, navigate]);
+
+  // Watch for backend errors
+  useEffect(() => {
+    if (apiError) {
+      const backendError = apiError?.response?.data?.error || 'Something went wrong. Please try again.';
+      setError(backendError);
+    }
+  }, [apiError]);
 
   return (
     <div className="container d-flex justify-content-center align-items-center vh-100">
@@ -53,25 +76,55 @@ const Register = () => {
 
         <div className="form-group mb-3">
           <label>Name</label>
-          <input type="text" name="name" className="form-control" value={formData?.name} onChange={handleChange} />
+          <input
+            type="text"
+            name="name"
+            className="form-control"
+            value={formData?.name}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="form-group mb-3">
           <label>Email</label>
-          <input type="email" name="email" className="form-control" value={formData?.email} onChange={handleChange} required />
+          <input
+            type="email"
+            name="email"
+            className="form-control"
+            value={formData?.email}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div className="form-group mb-3">
           <label>Password</label>
-          <input type="password" name="password" className="form-control" value={formData?.password} onChange={handleChange} required />
+          <input
+            type="password"
+            name="password"
+            className="form-control"
+            value={formData?.password}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div className="form-group mb-4">
           <label>Confirm Password</label>
-          <input type="password" name="confirmPassword" className="form-control" value={formData?.confirmPassword} onChange={handleChange} required />
+          <input
+            type="password"
+            name="confirmPassword"
+            className="form-control"
+            value={formData?.confirmPassword}
+            onChange={handleChange}
+            required
+          />
         </div>
 
-        <button type="submit" className="btn btn-success w-100">Register</button>
+        <button type="submit" className="btn btn-success w-100" disabled={loading}>
+          {loading ? 'Registering...' : 'Register'}
+        </button>
+
         <p className="mt-3 text-center">
           Already have an account? <a href="/">Login</a>
         </p>
