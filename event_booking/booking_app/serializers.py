@@ -24,7 +24,7 @@ class EventAvailabilitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventAvailability
-        fields = ['category', 'time_slot', 'status']
+        fields = ['category', 'time_slot', 'status', 'date']
 
 
 class UserBookingSerializer(serializers.ModelSerializer):
