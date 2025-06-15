@@ -1,28 +1,36 @@
-// components/ProtectedRoute.jsx
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import apiInstance from './apiInstsance';
-
+import { useDispatch, useSelector } from 'react-redux';
+import { clearUser, setUser } from './store/authSlice';
+import useAxios from './useAxios';
 
 const ProtectedRoute = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const dispatch = useDispatch();
+  const auth = useSelector((state) => state.auth);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [response, error, loading, fetchData] = useAxios();
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await apiInstance.get('api/check-session/');
-        setIsAuthenticated(res.data.authenticated);
-      } catch (err) {
-        setIsAuthenticated(false);
-      }
-    };
-    checkSession();
-  }, []);
-  if (isAuthenticated === null) {
-    return <div>Loading...</div>;  // Or a spinner while checking
+    if (!sessionChecked) {
+      fetchData({ method: 'GET', url: '/api/check-session/' });
+    }
+  }, [sessionChecked]);
+
+  useEffect(() => {
+    if (response?.authenticated) {
+      dispatch(setUser(response));
+      setSessionChecked(true);
+    } else if (error) {
+      dispatch(clearUser());
+      setSessionChecked(true);
+    }
+  }, [response, error, dispatch]);
+
+  if (loading || !sessionChecked) {
+    return <div>Loading...</div>;
   }
 
-  if (!isAuthenticated) {
+  if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

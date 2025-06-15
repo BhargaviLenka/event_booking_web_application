@@ -140,7 +140,7 @@ const CalendarSlotManager = () => {
                 return (
                   <div key={slot.id} className="position-relative border rounded p-2 mb-2 bg-white shadow-sm">
                     <div className="d-flex justify-content-between align-items-center">
-                      <div className="fw-semibold">
+                      <div className="fw">
                         {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                       </div>
                       {!isBooked && !isBackDate && (
@@ -153,17 +153,21 @@ const CalendarSlotManager = () => {
                       )}
                     </div>
                     <div className="mt-1 small text-muted">
-                      {isBooked ? (
+                      {/* {isBooked ? (
                         <>
                           <div className="text-success">Booked</div>
                           {slotData?.user?.name && <div className="fw-medium">{slotData.user.name}</div>}
                         </>
-                      ) : (
+                      ) : ( */}
                         <>
-                          {slotData?.category?.name && <div className="text-primary">{slotData.category.name}</div>}
-                          {slotData?.user?.name && <div className="fw-medium">{slotData.user.name}</div>}
+                          <div className="fw-bold text-primary" style={{ fontSize: '1.1rem' }}>
+                            {slotData?.category?.name || <span className="text-muted">No Category</span>}
+                          </div>
+                          <div className="small text-secondary">
+                            {slotData?.user?.name ? slotData.user.name : 'N/A'}
+                          </div>
                         </>
-                      )}
+                      {/* )} */}
                     </div>
                   </div>
                 );

@@ -1,45 +1,29 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login.page';
 import Register from './pages/Register.page';
-import AdminDashboard from './pages/AdminPages/AdminDashboard.page';
-import BookingHistory from './pages/AdminPages/BookingHistory.page';
-import EventCategoryForm from './pages/AdminPages/AddOrEditEventCategory.page';
-import EventAvailabilityForm from './pages/AdminPages/AddOrEditEvent.page';
+import Home from './pages/Home';
 import ProtectedRoute from './ProtectedRoute';
+import Login from './pages/Login.page';
+import CalendarSlotManager from './pages/AdminPages/AddOrEditEvent.page';
+import BookingHistory from './pages/AdminPages/BookingHistory.page';
+import DashboardLayout from './pages/Dashboard.page';
 
 function App() {
   return (
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
 
-        {/* Protected routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        } />
+      <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/availability" element={<CalendarSlotManager />} />
+        {/* <Route path="/my-bookings" element={<MyBookingsPage />} /> */}
+        <Route path="/booking-history" element={<BookingHistory />} />
+      </Route>
 
-        <Route path="/admin/bookings" element={
-          <ProtectedRoute>
-            <BookingHistory />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/admin/category" element={
-          <ProtectedRoute>
-            <EventCategoryForm />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/admin/availability" element={
-          <ProtectedRoute>
-            <EventAvailabilityForm />
-          </ProtectedRoute>
-        } />
-      </Routes>
+      <Route path="*" element={<Navigate to="/home" replace />} />
+    </Routes>
   );
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from 'react-redux';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import useAxios from "../useAxios"; 
+import useAxios from "../useAxios";
+import { setUser } from "../store/authSlice";
 
 const Login = () => {
   const [loginData, setLoginData] = useState({
@@ -10,9 +12,9 @@ const Login = () => {
   });
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [sessionResponse, , sessionLoading, fetchSession] = useAxios();
-
   const [loginResponse, loginError, loginLoading, fetchLogin] = useAxios();
 
   useEffect(() => {
@@ -21,15 +23,17 @@ const Login = () => {
 
   useEffect(() => {
     if (sessionResponse?.authenticated) {
-      navigate('/admin');
+      dispatch(setUser(sessionResponse));
+      navigate('/home');
     }
-  }, [sessionResponse, navigate]);
+  }, [sessionResponse, navigate, dispatch]);
 
   useEffect(() => {
     if (loginResponse?.authenticated) {
-      navigate('/admin');
+      dispatch(setUser(loginResponse));
+      navigate('/home');
     }
-  }, [loginResponse, navigate]);
+  }, [loginResponse, navigate, dispatch]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -41,7 +45,6 @@ const Login = () => {
     });
   };
 
-  // Show session loading before even rendering form
   if (sessionLoading) {
     return <div className="vh-100 d-flex justify-content-center align-items-center">Checking session...</div>;
   }
