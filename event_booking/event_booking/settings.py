@@ -7,7 +7,7 @@ SECRET_KEY = 'your-secret-key'  # Replace with your own
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -16,10 +16,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',    # <-- CORS added
-    'booking_app',    # <-- your app
+    'corsheaders',
+    'booking_app',
 ]
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # <-- very important: cors middleware before CommonMiddleware
     'django.middleware.security.SecurityMiddleware',
@@ -73,11 +72,11 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
+SESSION_COOKIE_SECURE = False  # or comment it out entirely for localhost
+CSRF_COOKIE_SECURE = False
 
 # Cookie configs - SAFE for local development
 SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
-
 
 # Static files
 STATIC_URL = 'static/'

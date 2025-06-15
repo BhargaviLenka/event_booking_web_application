@@ -42,7 +42,7 @@ const Register = () => {
     // Call backend API
     fetchData({
       method: 'POST',
-      url: '/register/',   // 🔧 your DRF endpoint
+      url: '/api/register/',   // 🔧 your DRF endpoint
       data: {
         name: formData.name,
         email: formData.email,

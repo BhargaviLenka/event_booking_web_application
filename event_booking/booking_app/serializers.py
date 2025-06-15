@@ -46,3 +46,14 @@ class UserBookingSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'event', 'status', 'booked_at', 'cancelled_at']
         read_only_fields = ['id', 'booked_at', 'cancelled_at']
 
+
+class UserMyBookingSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source='event.category.name')
+    start_time = serializers.TimeField(source='event.time_slot.start_time')
+    end_time = serializers.TimeField(source='event.time_slot.end_time')
+    date = serializers.DateField(source='event.date')
+    status = serializers.CharField()
+
+    class Meta:
+        model = UserBooking
+        fields = ['id', 'category', 'start_time', 'end_time', 'date', 'status', 'booked_at']

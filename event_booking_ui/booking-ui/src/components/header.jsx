@@ -10,11 +10,15 @@ const Header = () => {
   const auth = useSelector((state) => state.auth);
   const [, , , fetchData] = useAxios();
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
+  try {
     await fetchData({ method: 'POST', url: '/api/logout/' });
     dispatch(clearUser());
     navigate('/login');
-  };
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
   const isActive = (path) => location.pathname === path ? 'nav-link active fw-bold text-primary' : 'nav-link';
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light shadow-sm fixed-top" style={{ height: '60px' }}>
@@ -30,8 +34,8 @@ const Header = () => {
             <>
               <li className="nav-item"><Link className={isActive('/booking-history')} to="/booking-history">All Bookings</Link></li>
               <li className="nav-item"><Link className={isActive('/categories')} to="/categories">Categories</Link></li>
-            </>
-            : <li className="nav-item"><Link className={isActive('/my-bookings')} to="/my-bookings">My Bookings</Link></li>}
+            </>: null}
+            <li className="nav-item"><Link className={isActive('/my-bookings')} to="/my-bookings">My Bookings</Link></li>
             <li className="nav-item"><button className="btn btn-danger btn-sm ms-3" onClick={handleLogout}>Logout</button></li>
           </ul>
         </div>

@@ -1,9 +1,10 @@
 from django.urls import path
 from .views import (EventCategoryView, TimeSlotView, EventAvailabilityCreateView, UserBookingAPIView,
-                    CheckSessionView, LoginView, RegisterView, LogoutView)
+                    CheckSessionView, LoginView, RegisterView, LogoutView, MyBookingsView, get_csrf)
 
 
 urlpatterns = [
+    path('csrf/', get_csrf),
     path('register/', RegisterView.as_view()),
     path('login/', LoginView.as_view()),
     path('logout/', LogoutView.as_view()),
@@ -13,6 +14,7 @@ urlpatterns = [
     path('timeslots/', TimeSlotView.as_view()),
     path('timeslots/<int:pk>/', TimeSlotView.as_view()),
     path('availability/', EventAvailabilityCreateView.as_view()),
-    path('user-bookings/', UserBookingAPIView.as_view(), name='user-bookings')
+    path('user-bookings/', UserBookingAPIView.as_view(), name='user-bookings'),
+    path('my-bookings/', MyBookingsView.as_view(), name='my-bookings'),
 
 ]

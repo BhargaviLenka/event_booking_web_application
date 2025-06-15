@@ -1,6 +1,5 @@
-// src/hooks/apiInstance.js
-
 import axios from 'axios';
+import Cookies from 'js-cookie';  // Make sure you've installed this with: npm install js-cookie
 
 const BASE_URL = 'http://localhost:8000';
 
@@ -28,10 +27,17 @@ apiInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const csrfToken = Cookies.get('csrftoken');
+    if (csrfToken && ['post', 'put', 'delete'].includes(config.method)) {
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
+
     return config;
   },
   error => Promise.reject(error)
 );
+
 
 apiInstance.interceptors.response.use(
   response => response,

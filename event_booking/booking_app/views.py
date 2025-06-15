@@ -8,9 +8,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import EventCategory, TimeSlot, UserBooking, EventAvailability, User
-from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer, EventAvailabilitySerializer
+from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer, \
+    EventAvailabilitySerializer, UserMyBookingSerializer
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.http import JsonResponse
 
+@ensure_csrf_cookie
+def get_csrf(request):
+    return JsonResponse({'detail': 'CSRF cookie set'})
 
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -287,7 +293,7 @@ class EventAvailabilityCreateView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserBookingAPIView(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         """List all bookings of the logged-in user."""
@@ -333,6 +339,26 @@ class UserBookingAPIView(APIView):
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
+class MyBookingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        bookings = UserBooking.objects.filter(user=request.user).select_related(
+            'event__category', 'event__time_slot'
+        ).order_by('-booked_at')
+
+        serializer = UserMyBookingSerializer(bookings, many=True)
+        return Response({
+            "result": "Success",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+
+
+
+
+
 class CheckSessionView(APIView):
     @staticmethod
     def get(request):
@@ -341,7 +367,7 @@ class CheckSessionView(APIView):
                 return Response({
                     'authenticated': True,
                     'username': request.user.username,
-                    'is_admin': request.user.is_admin
+                    'is_admin': True
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({'authenticated': False}, status=status.HTTP_200_OK)
