@@ -40,3 +40,19 @@
 .read-the-docs {
   color: #888;
 }
+#bg-new {
+background: linear-gradient(135deg, #a13bbb, #aaf21b);
+}
+
+.slot-bg-primary {
+  background: linear-gradient(135deg, #a13bbb, #aaf21b);
+}
+.bg-gradient-green {
+  background: linear-gradient(135deg, #56ab2f, #5ab360);
+}
+.bg-gradient-red {
+  background: linear-gradient(135deg, #a44851, #be483f);
+}
+.bg-gradient-gray {
+  background: linear-gradient(135deg, #757f9a, #7990bb);
+}

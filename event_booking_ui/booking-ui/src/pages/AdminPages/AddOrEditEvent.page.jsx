@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import useAxios from '../../useAxios';
 import { Modal, Button, Form, Toast, ToastContainer } from 'react-bootstrap';
-import { Plus, Trash } from 'lucide-react';
+import { Pencil, Plus, Trash } from 'lucide-react';
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const userRole = 'admin'; // change to 'admin' to test admin behavior
+const userRole = 'user'; // change to 'admin' to test admin behavior
 
 const CalendarSlotManager = () => {
   const [weekDates, setWeekDates] = useState([]);
@@ -83,11 +83,6 @@ const CalendarSlotManager = () => {
     }
   };
 
-  // const handleSave = () => {
-  //   if (!selectedSlot || !selectedCategory) return;
-  //   setConfirmModal(true);
-  // };
-
   const handleConfirmAvailability = () => {
     submitAvailability({
       method: 'POST',
@@ -162,6 +157,16 @@ const CalendarSlotManager = () => {
     setToast({ show: true, message, variant });
   };
 
+//   const getSlotBgClass = (slotData, date) => {
+//   const isPast = new Date(date) < new Date(new Date().setHours(0, 0, 0, 0));
+
+//   if (isPast) return 'bg-secondary'; // grey
+//   if (!slotData || slotData.status !== 'Booked') return 'uibg-primary'; // blue
+//   if (slotData?.user?.is_self) return 'bg-success'; // green
+//   return 'bg-danger'; // red
+// };
+
+
   return (
     <div className="container mt-5">
       <h4 className="mb-4">Weekly Event Availability</h4>
@@ -182,37 +187,47 @@ const CalendarSlotManager = () => {
                 const isBackDate = new Date(date) < new Date(new Date().setHours(0, 0, 0, 0));
 
                 return (
-                  <div key={slot.id} className="position-relative border rounded p-2 mb-2 bg-white shadow-sm">
+                  <div key={slot.id} className={`position-relative border rounded p-2 mb-2 shadow-sm`}>
                     <div className="d-flex justify-content-between align-items-center">
                       <div>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</div>
                       {!isBackDate && (
                         <div>
-                          {userRole === 'user' && !isBooked && (
+                          {userRole === 'user' && !isBooked && ( 
                             <Plus role="button" size={16} onClick={() => handleSlotClick(date, slot.id, slotData?.category?.name, slotData?.category?.id)} className="text-success" />
                           )}
-                          {userRole === 'admin' && !isBooked && (
-                            <> 
-                              <Plus role="button" size={16} onClick={() => handleSlotClick(date, slot.id, slotData?.category?.name, slotData?.category?.id)} className="me-2 text-success" />
+                          {userRole === 'admin' && !isBooked && (<>
+                            {slotData?.category?.id ? 
+                            <Pencil
+                                role="button"
+                                title="Edit Slot"
+                                size={16}
+                                onClick={() => handleSlotClick(date, slot.id, slotData?.category?.name, slotData?.category?.id)}
+                                className="text-primary"
+                            /> : <Plus role="button" size={16} onClick={() => handleSlotClick(date, slot.id, slotData?.category?.name, slotData?.category?.id)} className="me-2 text-success" />}
+                                    <span> </span>                      
                               {slotData && (
+
                                 <Trash role="button" size={16} onClick={() => handleDeleteSlot(date, slot.id, slotData?.category?.name)} className="text-danger" />
                               )}
                             </>
-                          )}
+                        )}
                         </div>
                       )}
                     </div>
 
                     <div className="mt-1 small text-muted">
                       <div className="fw-bold text-primary" style={{ fontSize: '1.1rem' }}>
-                        {userRole === 'admin' ? slotData?.category?.name || <span className="text-muted">No Category</span> : 'N/A'}
+                        {slotData?.category?.name || (userRole === 'admin' ?  <span className="text-muted">No Category</span> : 'N/A')}
                       </div>
                       <div className="small text-secondary">
-                        {(userRole === 'admin' && slotData?.user?.name) ? slotData.user.name : 'N/A'}
+                        {userRole === 'admin' && (slotData?.user?.name || 'N/A')}
                       </div>
                     </div>
                   </div>
                 );
               })}
+              
+
             </div>
           </div>
         ))}
@@ -229,7 +244,11 @@ const CalendarSlotManager = () => {
           </Form.Select>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button variant="secondary" 
+            onClick={() => {
+                setSelectedSlot(null);
+                setShowModal(false)
+            }}>Cancel</Button>
           <Button variant="primary" onClick={handleConfirmAvailability}>Next</Button>
         </Modal.Footer>
       </Modal>
@@ -252,7 +271,8 @@ const CalendarSlotManager = () => {
           <p><strong>Category:</strong> {selectedSlot?.category}</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setConfirmModal(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => {
+                setSelectedSlot(null);setConfirmModal(false)}}>Cancel</Button>
           <Button variant="primary" onClick={handleConfirmBooking}>Confirm</Button>
         </Modal.Footer>
       </Modal>
