@@ -16,5 +16,7 @@ urlpatterns = [
     path('availability/', EventAvailabilityView.as_view()),
     path('user-bookings/', UserBookingAPIView.as_view(), name='user-bookings'),
     path('my-bookings/', MyBookingsView.as_view(), name='my-bookings'),
+    path('my-bookings/<int:pk>/', MyBookingsView.as_view(), name='delete-my-bookings'),
+    # path('set-csrf/', SetCSRFCookieView.as_view() , name='set-csrf')
 
 ]

@@ -12,18 +12,18 @@ import EventCategoryForm from './pages/AdminPages/AddOrEditEventCategory.page';
 import axios from 'axios';
 
 function App() {
-  useEffect(() => {
-    const fetchCSRF = async () => {
-      try {
-        await axios.get('http://localhost:8000/api/csrf/', { withCredentials: true });
-        console.log("CSRF cookie set successfully");
-      } catch (err) {
-        console.error("Failed to set CSRF:", err);
-      }
-    };
 
-    fetchCSRF();
-  }, []);
+  useEffect(() => {
+  fetch("http://127.0.0.1:8000/api/csrf/", {
+    method: "GET",
+    credentials: "include",  
+  })
+  .then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch CSRF");
+  })
+  .catch((err) => console.error(err));
+}, []);
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

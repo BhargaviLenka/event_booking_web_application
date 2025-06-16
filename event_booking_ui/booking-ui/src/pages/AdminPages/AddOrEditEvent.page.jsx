@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import useAxios from '../../useAxios';
 import { Modal, Button, Form, Toast, ToastContainer } from 'react-bootstrap';
 import { Pencil, Plus, Trash } from 'lucide-react';
+import { useSelector } from 'react-redux';
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const userRole = 'user'; // change to 'admin' to test admin behavior
 
 const CalendarSlotManager = () => {
   const [weekDates, setWeekDates] = useState([]);
@@ -32,6 +32,8 @@ const CalendarSlotManager = () => {
     start.setHours(0, 0, 0, 0);
     return start;
   });
+  const auth = useSelector((state) => state.auth);
+  const userRole = auth?.is_admin ? 'admin' : 'user'; 
 
   useEffect(() => {
     const dates = [...Array(7)].map((_, i) => {

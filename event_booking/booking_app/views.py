@@ -1,6 +1,5 @@
 from datetime import datetime, time
 from django.contrib.auth import authenticate, login, logout
-
 from django.utils import timezone
 from django.utils.timezone import now
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +12,9 @@ from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookin
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 
 @ensure_csrf_cookie
 def get_csrf(request):
@@ -95,8 +97,12 @@ class EventCategoryView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+    @staticmethod
+    def delete(request):
+        pass
+
 class TimeSlotView(APIView):
-    # permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     @staticmethod
     def get(request):
@@ -129,9 +135,10 @@ class TimeSlotView(APIView):
 
 
 class UserBookingHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def get(self, request):
+    @staticmethod
+    def get(request):
         # Get all bookings by current user
         bookings = UserBooking.objects.filter(user=request.user).order_by('-booked_at')
         serializer = UserBookingSerializer(bookings, many=True)
@@ -139,10 +146,13 @@ class UserBookingHistoryView(APIView):
 
 
 class EventAvailabilityView(APIView):
+    permission_classes = [IsAuthenticated]
+
 
     @staticmethod
     def get(request):
         dates = request.GET.getlist('dates[]') or request.GET.get('dates', '').split(',')
+
         if not dates:
             return Response({'result': 'Failed', 'message': 'Date range required'}, status=400)
 
@@ -214,7 +224,9 @@ class EventAvailabilityView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def delete(self, request):
+
+    @staticmethod
+    def delete(request):
         date = request.data.get('date')
         time_slot_id = request.data.get('time_slot')
 
@@ -235,15 +247,18 @@ class EventAvailabilityView(APIView):
 
 
 class UserBookingAPIView(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    @staticmethod
+    def get(request):
         """List all bookings of the logged-in user."""
         bookings = UserBooking.objects.filter(user=request.user).select_related('event')
         serializer = UserBookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
+
+    @staticmethod
+    def post(request):
         """Create a new booking."""
         try:
             user_id = 1
@@ -254,6 +269,8 @@ class UserBookingAPIView(APIView):
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             event = EventAvailability.objects.filter(date=date, category_id=category_id, time_slot_id=slot_id,
                                                      status='AVAILABLE')
+
+
             if date < now().date():
                 return Response({"error": "Cannot book past events."}, status=status.HTTP_400_BAD_REQUEST)
             # Prevent duplicate booking
@@ -266,8 +283,8 @@ class UserBookingAPIView(APIView):
         except Exception as err:
             return Response({'message': 'Booking is unsuccessful', 'result': 'Failed'}, status=status.HTTP_400_BAD_REQUEST)
 
-
-    def delete(self, request):
+    @staticmethod
+    def delete(request):
         """Cancel an event slot."""
         booking_id = request.data.get("id")
         try:
@@ -283,10 +300,10 @@ class UserBookingAPIView(APIView):
 
 
 class MyBookingsView(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        bookings = UserBooking.objects.filter(user_id=1).select_related(
+        bookings = UserBooking.objects.filter(user=request.user).select_related(
             'event__category', 'event__time_slot'
         ).order_by('-booked_at')
 
@@ -296,8 +313,8 @@ class MyBookingsView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
-    def delete(self, request):
-        booking_id = request.data.get('booking_id')
+    def delete(self, request, pk):
+        booking_id = pk
         user = request.user
 
         if not booking_id:
@@ -326,16 +343,18 @@ class CheckSessionView(APIView):
                 return Response({
                     'authenticated': True,
                     'username': request.user.username,
-                    'is_admin': True
+                    'is_admin': request.user.is_admin
                 }, status=status.HTTP_200_OK)
             else:
-                return Response({'authenticated': True}, status=status.HTTP_200_OK)
+                return Response({'authenticated': False}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+@method_decorator(csrf_protect, name='dispatch')
 class LoginView(APIView):
 
     @staticmethod
@@ -347,12 +366,22 @@ class LoginView(APIView):
             user = authenticate(request, username=email, password=password)
             if user is not None:
                 login(request, user)
-                return Response({'message': 'Login successful', 'is_admin': user.is_admin, 'authenticated': True})
+                return Response({
+                    'message': 'Login successful',
+                    'is_admin': user.is_admin,
+                    'authenticated': True
+                })
             else:
-                return Response({'authenticated': False, 'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
+                return Response({
+                    'authenticated': False,
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
-            return Response({'error': 'Something went wrong.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'error': 'Something went wrong.',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class RegisterView(APIView):
 
@@ -376,6 +405,7 @@ class RegisterView(APIView):
 
 
 class LogoutView(APIView):
+
     @staticmethod
     def post(request):
         try:
@@ -383,3 +413,5 @@ class LogoutView(APIView):
             return Response({'message': 'Successfully logged out.'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

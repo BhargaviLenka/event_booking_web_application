@@ -56,4 +56,4 @@ class UserMyBookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserBooking
-        fields = ['id', 'category', 'start_time', 'end_time', 'date', 'status', 'booked_at']
+        fields = ['id', 'category', 'start_time', 'end_time', 'date', 'status', 'booked_at', 'cancelled_at']

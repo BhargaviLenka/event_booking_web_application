@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from django.conf.global_settings import SESSION_COOKIE_SAMESITE
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'your-secret-key'  # Replace with your own
@@ -76,7 +78,7 @@ SESSION_COOKIE_SECURE = False  # or comment it out entirely for localhost
 CSRF_COOKIE_SECURE = False
 
 # Cookie configs - SAFE for local development
-SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE='Lax'
 
 # Static files
 STATIC_URL = 'static/'

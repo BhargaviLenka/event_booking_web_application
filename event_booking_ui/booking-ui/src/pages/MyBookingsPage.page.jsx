@@ -63,8 +63,8 @@ const MyBookingsPage = () => {
     >
       <div className="bg-light border-bottom p-3 d-flex justify-content-between align-items-center">
         <strong className="text-primary">{formatDate(booking.date)}</strong>
-        <Badge bg={booking.status === 'ACTIVE' ? 'success' : 'secondary'}>
-          {booking.status === 'ACTIVE' && isFutureDate(booking.date) ? 'Upcoming' : 'Completed'}
+        <Badge bg={(booking.status === 'ACTIVE' && isFutureDate(booking.date)) ? 'success' : 'secondary'}>
+          {booking.status === 'ACTIVE' && isFutureDate(booking.date) ? 'Upcoming' : (booking?.status === 'CANCELLED' ? 'Cancelled': 'Completed')}
         </Badge>
       </div>
 
@@ -80,7 +80,10 @@ const MyBookingsPage = () => {
         <Card.Text className="text-muted small">
            Booked on {formatBookedAt(booking.booked_at)}
         </Card.Text>
-
+        {booking?.status === 'CANCELLED' &&
+        <Card.Text className="text-muted small">
+           Cancelled on {formatBookedAt(booking.cancelled_at)}
+        </Card.Text>}
         {booking.status === 'ACTIVE' && isFutureDate(booking.date) && (
           <Button
             variant="outline-danger"
