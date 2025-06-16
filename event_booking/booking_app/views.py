@@ -209,7 +209,7 @@ class EventAvailabilityListView(APIView):
 
 
 
-class EventAvailabilityCreateView(APIView):
+class EventAvailabilityView(APIView):
 
     @staticmethod
     def get(request):
@@ -276,7 +276,7 @@ class EventAvailabilityCreateView(APIView):
                 new_data = EventAvailabilitySerializer(data_)
                 return Response({
                     'result': 'Success',
-                    'data': new_data,
+                    'data': new_data.data,
                     'message': 'New availability created.'
                 }, status=status.HTTP_201_CREATED)
                 # return Response({
@@ -292,6 +292,26 @@ class EventAvailabilityCreateView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request):
+        date = request.data.get('date')
+        time_slot_id = request.data.get('time_slot')
+
+        if not date or not time_slot_id:
+            return Response({'error': 'date and time_slot are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            availability = EventAvailability.objects.get(date=date, time_slot_id=time_slot_id)
+        except EventAvailability.DoesNotExist:
+            return Response({'error': 'Slot not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if availability.status == 'BOOKED':
+            return Response({'error': 'Cannot delete a booked slot.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        availability.delete()
+        return Response({'message': 'Slot deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+
 class UserBookingAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -305,8 +325,8 @@ class UserBookingAPIView(APIView):
         """Create a new booking."""
         # id = User.objects.create(username="Bhargavi", email="bhargavilenka123@gmail.com", password="bhargavi").pk
         data = {
-            "user": id,
-            "event": 2,
+            "user": request.user,
+            "event": request.data.get('category'),
             "status": "ACTIVE"
           }
         serializer = UserBookingSerializer(data=request.data)
@@ -325,7 +345,7 @@ class UserBookingAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        """Cancel a booking."""
+        """Cancel an event slot."""
         booking_id = request.data.get("id")
         try:
             booking = UserBooking.objects.get(id=booking_id, user=request.user)
@@ -340,10 +360,10 @@ class UserBookingAPIView(APIView):
 
 
 class MyBookingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        bookings = UserBooking.objects.filter(user=request.user).select_related(
+        bookings = UserBooking.objects.filter(user_id=3).select_related(
             'event__category', 'event__time_slot'
         ).order_by('-booked_at')
 
@@ -353,6 +373,27 @@ class MyBookingsView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
+    def delete(self, request):
+        booking_id = request.data.get('booking_id')
+        user = request.user
+
+        if not booking_id:
+            return Response({'error': 'booking_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            booking = UserBooking.objects.get(id=booking_id, user=user)
+        except UserBooking.DoesNotExist:
+            return Response({'error': 'Booking not found or does not belong to the user.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if booking.status == 'CANCELLED':
+            return Response({'error': 'Booking is already cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = 'CANCELLED'
+        booking.cancelled_at = now()
+        booking.save()
+
+        return Response({'message': 'Booking cancelled successfully.'}, status=status.HTTP_200_OK)
 
 
 
@@ -388,7 +429,7 @@ class LoginView(APIView):
             user = authenticate(request, username=email, password=password)
             if user is not None:
                 login(request, user)
-                return Response({'message': 'Login successful', 'is_admin': user.is_admin})
+                return Response({'message': 'Login successful', 'is_admin': user.is_admin, 'authenticated': True})
             else:
                 return Response({'authenticated': False, 'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -414,6 +455,7 @@ class RegisterView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class LogoutView(APIView):
     @staticmethod

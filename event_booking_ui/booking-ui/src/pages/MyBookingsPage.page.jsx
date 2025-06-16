@@ -6,8 +6,8 @@ import { Card, Spinner, Badge } from 'react-bootstrap';
 
 const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [bookingResp, , , fetchBookings] = useAxios();
+  // const [loading, setLoading] = useState(true);
+  const [bookingResp, , loading, fetchBookings] = useAxios();
 
   useEffect(() => {
     fetchBookings({ method: 'GET', url: '/api/my-bookings/' });
@@ -16,7 +16,7 @@ const MyBookingsPage = () => {
   useEffect(() => {
     if (bookingResp?.result === 'Success') {
       setBookings(bookingResp.data);
-      setLoading(false);
+      // setLoading(false);
     }
   }, [bookingResp]);
 

@@ -19,6 +19,12 @@ const getTokenFromCookies = () => {
 const apiInstance = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
+  xsrfHeaderName: 'X-CSRFToken',
+  xsrfCookieName: 'csrftoken',
+  headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+  }
 });
 
 apiInstance.interceptors.request.use(
@@ -29,7 +35,7 @@ apiInstance.interceptors.request.use(
     }
 
     const csrfToken = Cookies.get('csrftoken');
-    if (csrfToken && ['post', 'put', 'delete'].includes(config.method)) {
+    if (csrfToken && ['POST', 'PUT', 'DELETE'].includes(config.method)) {
       config.headers['X-CSRFToken'] = csrfToken;
     }
 
