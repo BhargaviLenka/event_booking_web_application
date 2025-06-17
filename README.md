@@ -1,4 +1,8 @@
-![Screenshot from 2025-06-17 17-40-02](https://github.com/user-attachments/assets/be7e91bf-3772-4b66-bd93-13323808cb8f)# Event Booking Web Application
+![Screenshot from 2025-06-17 17-40-02](https://github.com/user-attachments/assets/be7e91bf-3772-4b66-bd93-13323808cb8f)
+
+# added demo images folder for reference
+
+# Event Booking Web Application
 
 A full-stack event booking application built using **Django (REST API)** for the backend and **React + Vite** for the frontend. 
 It enables users to book event time slots, view their booking history, and admins to manage event categories and availability.
