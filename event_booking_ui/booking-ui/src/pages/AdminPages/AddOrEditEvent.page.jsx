@@ -230,7 +230,7 @@ const CalendarSlotManager = () => {
                         <Card.Body className="p-2 d-flex justify-content-between align-items-center">
                           <div>
                             <div>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</div>
-                            <div className="small text-muted">{slotData?.category?.name || 'Unmapped'}</div>
+                            <div className="small text-muted">{slotData?.category?.name || 'N/A'}</div>
                             {isBooked && auth?.is_admin && <div className="fw-bold" >Booked by: {slotData.user?.name}</div>}
                           </div>
 

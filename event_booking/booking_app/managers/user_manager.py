@@ -92,6 +92,7 @@ class UserBookingManager:
         ).order_by('-booked_at')
 
     @staticmethod
+    @transaction.atomic
     def cancel_booking(user, booking_id):
         """
         Cancels a user’s booking if valid.
@@ -107,7 +108,8 @@ class UserBookingManager:
             return {'error': 'booking_id is required.'}, 400
 
         try:
-            booking = UserBooking.objects.get(id=booking_id, user=user)
+            booking = UserBooking.objects.select_related('event').get(id=booking_id, user=user)
+            event_obj = booking.event
         except UserBooking.DoesNotExist:
             return {'error': 'Booking not found or does not belong to the user.'}, 404
 
@@ -117,5 +119,7 @@ class UserBookingManager:
         booking.status = 'CANCELLED'
         booking.cancelled_at = now()
         booking.save()
+        event_obj.status = 'AVAILABLE'
+        event_obj.save()
 
         return {'message': 'Booking cancelled successfully.'}, 200
