@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';  // Make sure you've installed this with: npm install js-cookie
+import Cookies from 'js-cookie';  
 
 const BASE_URL = 'http://127.0.0.1:8000';
 

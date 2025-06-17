@@ -1,5 +1,12 @@
 from rest_framework import serializers
-from .models import EventCategory, TimeSlot, EventAvailability, UserBooking
+from .models import EventCategory, TimeSlot, EventAvailability, UserBooking, User
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name']
 
 
 class EventCategorySerializer(serializers.ModelSerializer):
@@ -8,7 +15,6 @@ class EventCategorySerializer(serializers.ModelSerializer):
         model = EventCategory
         fields = ['id', 'name']
         read_only_fields = ['id']
-
 
 
 class TimeSlotSerializer(serializers.ModelSerializer):
@@ -22,10 +28,11 @@ class EventAvailabilitySerializer(serializers.ModelSerializer):
     category = EventCategorySerializer()
     time_slot = TimeSlotSerializer()
     user = serializers.SerializerMethodField()
+    is_self_booked = serializers.BooleanField()
 
     class Meta:
         model = EventAvailability
-        fields = ['category', 'time_slot', 'status', 'date', 'user']
+        fields = ['category', 'time_slot', 'status', 'date', 'user', 'is_self_booked']
 
     def get_user(self, obj):
         booking = obj.user_booking.filter(status='ACTIVE').first()
@@ -39,7 +46,8 @@ class EventAvailabilitySerializer(serializers.ModelSerializer):
 
 
 class UserBookingSerializer(serializers.ModelSerializer):
-    event = serializers.PrimaryKeyRelatedField(queryset=EventAvailability.objects.all(), required=True)
+    event = EventAvailabilitySerializer()
+    user = UserSerializer()
 
     class Meta:
         model = UserBooking

@@ -1,1 +1,0 @@
-default_app_config = 'booking_app.timeslot.MyAppConfig'

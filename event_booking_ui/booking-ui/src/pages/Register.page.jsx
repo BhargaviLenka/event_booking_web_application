@@ -23,7 +23,6 @@ const Register = () => {
   const handleRegister = (e) => {
     e.preventDefault();
 
-    // Frontend validations
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Please fill in all fields.');
       return;
@@ -39,10 +38,9 @@ const Register = () => {
 
     setError('');
 
-    // Call backend API
     fetchData({
       method: 'POST',
-      url: '/api/register/',   // 🔧 your DRF endpoint
+      url: '/api/register/',  
       data: {
         name: formData.name,
         email: formData.email,
@@ -51,15 +49,15 @@ const Register = () => {
     });
   };
 
-  // Watch for success response
   useEffect(() => {
-    if (response?.message) {
-      // Redirect to login after successful registration
-      navigate('/');
+    if (response?.result === 'Success' && response?.message) {
+      navigate('/login');
+    }
+    else if (response?.result === 'Failed') {
+      setError('Registration failed. Please try again.');
     }
   }, [response, navigate]);
 
-  // Watch for backend errors
   useEffect(() => {
     if (apiError) {
       const backendError = apiError?.response?.data?.error || 'Something went wrong. Please try again.';
@@ -126,7 +124,7 @@ const Register = () => {
         </button>
 
         <p className="mt-3 text-center">
-          Already have an account? <a href="/">Login</a>
+          Already have an account? <a href="/login">Login</a>
         </p>
       </form>
     </div>
