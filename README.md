@@ -1,6 +1,6 @@
 ![Screenshot from 2025-06-17 17-40-02](https://github.com/user-attachments/assets/be7e91bf-3772-4b66-bd93-13323808cb8f)
 
-# added demo images folder for reference
+added demo images folder for reference
 
 # Event Booking Web Application
 
@@ -58,6 +58,12 @@ It enables users to book event time slots, view their booking history, and admin
    python manage.py runserver
 
 > Backend URL: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+---
+
+# Admin credentials
+
+usename - admin@gmail.com
+password - admin@123
 
 ---
 
@@ -83,11 +89,6 @@ It enables users to book event time slots, view their booking history, and admin
 
 ## Model Structure Diagram
 erDiagram
-    User ||--o{ UserBooking : books
-    EventAvailability ||--o{ UserBooking : is_booked_by
-    EventAvailability }o--|| Category : belongs_to
-    EventAvailability }o--|| TimeSlot : happens_at
-
     User {
         int id
         string username
