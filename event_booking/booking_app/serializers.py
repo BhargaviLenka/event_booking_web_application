@@ -45,8 +45,17 @@ class EventAvailabilitySerializer(serializers.ModelSerializer):
         return None
 
 
+class EventAvailabilityDataSerializer(serializers.ModelSerializer):
+    category = EventCategorySerializer()
+    time_slot = TimeSlotSerializer()
+
+    class Meta:
+        model = EventAvailability
+        fields = ['category', 'time_slot', 'status', 'date']
+
+
 class UserBookingSerializer(serializers.ModelSerializer):
-    event = EventAvailabilitySerializer()
+    event = EventAvailabilityDataSerializer()
     user = UserSerializer()
 
     class Meta:

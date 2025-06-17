@@ -92,7 +92,7 @@ const CalendarSlotManager = () => {
     if (new Date(date) < new Date(todayStr)) return;
 
     if (userRole === 'user') {
-      if (slotData?.status === 'Booked' || !slotData?.category) return;
+      if (slotData?.status === 'BOOKED' || !slotData?.category) return;
       setSelectedSlot({ date, slot: slotId, category, categoryId });
       setConfirmModal(true);
     }
@@ -215,7 +215,7 @@ const CalendarSlotManager = () => {
                 })
                   .map(slot => {
                     const slotData = getSlotData(date, slot.id);
-                    const isBooked = slotData?.status === 'Booked';
+                    const isBooked = slotData?.status === 'BOOKED';
                     const selfBooked = slotData?.is_self_booked ;
                     const isPastSlot = () => {
                         if (!slot?.start_time) return true;
@@ -244,6 +244,7 @@ const CalendarSlotManager = () => {
                                   />
                                 ) : null
                               ) : (
+                                !isBooked &&
                                 <>
                                   <Pencil role="button" size={16} className="me-1 text-primary"
                                     onClick={() =>

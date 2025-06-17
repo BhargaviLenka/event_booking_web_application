@@ -1,22 +1,21 @@
-from datetime import datetime, time
+from datetime import time
 from django.contrib.auth import authenticate, login, logout
-from django.utils import timezone
-from django.utils.timezone import now
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import EventCategory, TimeSlot, UserBooking, EventAvailability, User
+
+from .managers.booking_manager import EventBookingManager
+from .managers.user_manager import UserBookingManager
+from .models import EventCategory, TimeSlot, UserBooking, User, EventAvailability
+from .paginator import paginator_func
+from .permission_classes import IsAdminUser
 from .serializers import EventCategorySerializer, TimeSlotSerializer, UserBookingSerializer, \
-    EventAvailabilitySerializer, UserMyBookingSerializer
-from django.shortcuts import get_object_or_404
+    UserMyBookingSerializer
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
-from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
-from django.db.models import Exists, OuterRef, Q
-from django.db import transaction
 
 
 @ensure_csrf_cookie
@@ -24,21 +23,27 @@ def get_csrf(request):
     return JsonResponse({'detail': 'CSRF cookie set'})
 
 
-class IsAdminUser(permissions.BasePermission):
-    
-    @staticmethod
-    def has_permission(request, view):
-        return request.user and request.user.is_authenticated and request.user.is_admin
-
-
 class EventCategoryView(APIView):
+    """
+    API view to handle Event Category operations.
 
+    Supports:
+    - GET: Retrieve all event categories.
+    - POST: Create a new event category.
+    """
     @staticmethod
     def get(request):
+        """
+        Retrieve all event categories.
+
+        Returns:
+            200 OK: List of all categories.
+            500 Internal Server Error: If an exception occurs.
+        """
         try:
             categories = EventCategory.objects.all()
             serializer = EventCategorySerializer(categories, many=True)
-            return Response({'data': serializer.data,"result":"Success"}, status=status.HTTP_200_OK)
+            return Response({'data': serializer.data, "result": "Success"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
                 'result': 'Failed',
@@ -48,6 +53,16 @@ class EventCategoryView(APIView):
 
     @staticmethod
     def post(request):
+        """
+        Create a new event category.
+
+        Request body should contain valid category data.
+
+        Returns:
+            201 Created: If category is successfully created.
+            200 OK: If validation fails with errors.
+            500 Internal Server Error: If an exception occurs.
+        """
         try:
             serializer = EventCategorySerializer(data=request.data)
             if serializer.is_valid():
@@ -104,10 +119,28 @@ class EventCategoryView(APIView):
 
 
 class TimeSlotView(APIView):
+    """
+    API view to manage and retrieve time slots.
+
+    Automatically initializes default time slots if none exist.
+    Requires authentication.
+    """
     permission_classes = [IsAuthenticated]
 
     @staticmethod
     def get(request):
+        """
+        Retrieve all time slots.
+
+        If no time slots exist, initialize with predefined slots:
+        - 9:00 AM to 12:00 PM
+        - 12:00 PM to 3:00 PM
+        - 3:00 PM to 6:00 PM
+
+        Returns:
+            200 OK: Success response with time slot data.
+            500 Internal Server Error: If an exception occurs.
+        """
         try:
             if TimeSlot.objects.count() == 0:
                 predefined_slots = [
@@ -122,6 +155,7 @@ class TimeSlotView(APIView):
                         end_time=slot["end"]
                     )
                 print("Time slots inserted successfully.")
+
             slots = TimeSlot.objects.all()
             serializer = TimeSlotSerializer(slots, many=True)
             return Response({
@@ -137,10 +171,23 @@ class TimeSlotView(APIView):
 
 
 class UserBookingHistoryView(APIView):
+    """
+    API view to retrieve the booking history of the logged-in user.
+
+    Permissions:
+        - User must be authenticated.
+        - User must be an admin (custom permission IsAdminUser).
+    """
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     @staticmethod
     def get(request):
+        """
+        Retrieve booking history of the authenticated user.
+
+        Returns:
+            200 OK: List of bookings in reverse chronological order.
+        """
         bookings = UserBooking.objects.filter(user=request.user).order_by('-booked_at')
         serializer = UserBookingSerializer(bookings, many=True)
         return Response({'bookings': serializer.data}, status=status.HTTP_200_OK)
@@ -151,57 +198,42 @@ class EventAvailabilityView(APIView):
 
     @staticmethod
     def get(request):
+        """
+        Fetch availability for provided dates.
+        """
         try:
-            availability = EventBookingManager.get_event_availability_data(request)
-            serializer = EventAvailabilitySerializer(availability, many=True)
-            return Response({'result': 'Success', 'data': serializer.data})
+            result = EventBookingManager.fetch_availability(request)
+            return Response(result['body'], status=result['status'])
         except Exception as err:
-            return Response({'result': 'Failed', 'message': 'Something went wrong'})
+            return Response({
+                'result': 'Failed',
+                'message': 'Something went wrong',
+                'error': str(err)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @staticmethod
     def post(request):
+        """
+        Create or update availability for a date and time slot.
+        """
         try:
-            data = request.data
-            date_str = data.get('date')
-            time_slot_id = data.get('time_slot')
-            category_id = data.get('category')
-            if not (date_str and time_slot_id and category_id):
-                return Response({
-                    'result': 'Failed',
-                    'message': 'Date, Time Slot, and Category are required.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            if selected_date < now().date():
-                return Response({
-                    'result': 'Failed',
-                    'message': 'Cannot update past dates.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            availability = EventAvailability.objects.filter(
-                date=selected_date,
-                time_slot_id=time_slot_id).first()
-            if availability:
-                has_booking = UserBooking.objects.filter(event=availability, status='ACTIVE').exists()
-                if has_booking:
-                    return Response({
-                        'result': 'Failed',
-                        'message': 'Cannot update category — slot already booked.'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            result = EventBookingManager.create_or_update_availability(request)
+            return Response(result['body'], status=result['status'])
+        except Exception as e:
+            return Response({
+                'result': 'Failed',
+                'message': 'Internal server error.',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                availability.category_id = category_id
-                availability.save()
-                return Response({
-                    'result': 'Success',
-                    'message': 'Category updated for existing slot.'
-                }, status=status.HTTP_200_OK)
-            else:
-                EventAvailability.objects.create(
-                    date=selected_date,
-                    time_slot_id= int(time_slot_id),
-                    category_id= int(category_id))
-                return Response({
-                    'result': 'Success',
-                    'message': 'New availability created.'
-                }, status=status.HTTP_201_CREATED)
+    @staticmethod
+    def delete(request):
+        """
+        Delete a time slot if it's not already booked.
+        """
+        try:
+            result = EventBookingManager.delete_availability(request)
+            return Response(result['body'], status=result['status'])
         except Exception as e:
             return Response({
                 'result': 'Failed',
@@ -210,147 +242,94 @@ class EventAvailabilityView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-    @staticmethod
-    def delete(request):
-        date = request.data.get('date')
-        time_slot_id = request.data.get('time_slot')
-
-        if not date or not time_slot_id:
-            return Response({'error': 'date and time_slot are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            availability = EventAvailability.objects.get(date=date, time_slot_id=time_slot_id)
-        except EventAvailability.DoesNotExist:
-            return Response({'error': 'Slot not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if availability.status == 'BOOKED':
-            return Response({'error': 'Cannot delete a booked slot.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        availability.delete()
-        return Response({'message': 'Slot deleted successfully.'}, status=status.HTTP_200_OK)
-
-
-
 class UserBookingAPIView(APIView):
+    """
+    API view to handle user bookings (GET and POST).
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     @staticmethod
     def get(request):
         """List all bookings of the logged-in user."""
         filters = request.query_params
-        bookings = UserBooking.objects.filter(user=request.user).select_related('event').order_by('-booked_at',
-                                                                                                  '-cancelled_at')
+        bookings = UserBooking.objects.select_related('event').order_by(
+            '-booked_at', '-cancelled_at'
+        )
         data, total_no_of_objs = paginator_func(filters, bookings)
         serializer = UserBookingSerializer(data, many=True)
-        return Response({"result": "Success", "data": serializer.data,
-                         "count": total_no_of_objs}, status=status.HTTP_200_OK)
+        return Response({
+            "result": "Success",
+            "data": serializer.data,
+            "count": total_no_of_objs
+        }, status=status.HTTP_200_OK)
 
     @staticmethod
-    @transaction.atomic
     def post(request):
-        """Create a new booking."""
-        try:
-            user = request.user
-            data = request.data
-            date_str = data.get('date')
-            slot_id = data.get('time_slot')
-            category_id = data.get('categoryId')
-            date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            if date < now().date():
-                return Response({"error": "Cannot book past events."}, status=status.HTTP_400_BAD_REQUEST)
-            event = EventAvailability.objects.select_for_update(nowait=True).get(
-                date=date,
-                category_id=category_id,
-                time_slot_id=slot_id,
-                status='AVAILABLE'
-            )
-            exists = UserBooking.objects.select_for_update(nowait=True).filter(
-                event_id=event.id,
-                status='ACTIVE'
-            ).exists()
-            if exists:
-                return Response({"error": "Someone already booked this event."}, status=status.HTTP_400_BAD_REQUEST)
-            UserBooking.objects.create(
-                user=user,
-                event_id=event.id,
-                booked_at=now(),
-                status='ACTIVE'
-            )
-            event.status = 'BOOKED'
-            event.save()
-            return Response({'message': 'Booking is successful', 'result': 'Success'}, status=status.HTTP_201_CREATED)
-        except EventAvailability.DoesNotExist:
-            return Response({'error': 'The selected event is not available.'}, status=status.HTTP_404_NOT_FOUND)
-        except (DatabaseError, OperationalError):
-            return Response(
-                {'error': 'Another booking is currently in progress. Please try again shortly.'},
-                status=status.HTTP_409_CONFLICT
-            )
-        except Exception as err:
-            return Response(
-                {'message': 'Booking is unsuccessful', 'result': 'Failed', 'error': str(err)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @staticmethod
-    def delete(request):
-        """Cancel an event slot."""
-        booking_id = request.data.get("id")
-        try:
-            booking = UserBooking.objects.get(id=booking_id, user=request.user)
-            if booking.status == 'CANCELLED':
-                return Response({"detail": "Booking already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
-            booking.status = 'CANCELLED'
-            booking.cancelled_at = timezone.now()
-            booking.save()
-            return Response({"detail": "Booking cancelled successfully."}, status=status.HTTP_200_OK)
-        except UserBooking.DoesNotExist:
-            return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        """Create a booking using manager logic."""
+        data, code = UserBookingManager.create_booking(request.user, request.data)
+        return Response(data, status=code)
 
 
 class MyBookingsView(APIView):
+    """
+    API view to handle retrieval and cancellation of user's bookings.
+
+    - GET: Returns a list of the user's current and past bookings.
+    - DELETE: Cancels a booking made by the authenticated user.
+    """
     permission_classes = [IsAuthenticated]
 
     @staticmethod
     def get(request):
-        bookings = UserBooking.objects.filter(user=request.user).select_related(
-            'event__category', 'event__time_slot'
-        ).order_by('-booked_at')
+        """
+        Get all bookings for the authenticated user.
+
+        Returns:
+            Response: JSON object containing a list of bookings and a success message.
+        """
+        bookings = UserBookingManager.get_user_bookings(request.user)
         serializer = UserMyBookingSerializer(bookings, many=True)
         return Response({
             "result": "Success",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
-
     @staticmethod
     def delete(request, pk):
-        booking_id = pk
-        user = request.user
-        if not booking_id:
-            return Response({'error': 'booking_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            booking = UserBooking.objects.get(id=booking_id, user=user)
-        except UserBooking.DoesNotExist:
-            return Response({'error': 'Booking not found or does not belong to the user.'},
-                            status=status.HTTP_404_NOT_FOUND)
-        if booking.status == 'CANCELLED':
-            return Response({'error': 'Booking is already cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
-        booking.status = 'CANCELLED'
-        booking.cancelled_at = now()
-        booking.save()
-        return Response({'message': 'Booking cancelled successfully.'}, status=status.HTTP_200_OK)
+        """
+        Cancel a booking made by the authenticated user.
+
+        Args:
+            pk (int): Primary key of the booking to be canceled.
+
+        Returns:
+            Response: JSON object with status message.
+        """
+        response_data, code = UserBookingManager.cancel_booking(request.user, pk)
+        return Response(response_data, status=code)
 
 
 class CheckSessionView(APIView):
+    """
+    API view to check the current session's authentication status.
+    """
+
     @staticmethod
     def get(request):
+        """
+        Check if the user is authenticated.
+
+        Returns:
+            Response: A JSON response with authentication status and user details (if authenticated).
+        """
         try:
             if request.user.is_authenticated:
                 return Response({
                     'authenticated': True,
                     'username': request.user.username,
-                    'is_admin': request.user.is_admin
+                    'is_admin': request.user.is_admin,
+                    'name': request.user.first_name,
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({'authenticated': False}, status=status.HTTP_200_OK)
@@ -363,9 +342,22 @@ class CheckSessionView(APIView):
 
 @method_decorator(csrf_protect, name='dispatch')
 class LoginView(APIView):
+    """
+    API view to authenticate and log in a user.
+    """
 
     @staticmethod
     def post(request):
+        """
+        Authenticate the user and create a session.
+
+        Request Body:
+            - email (str): User's email address.
+            - password (str): User's password.
+
+        Returns:
+            Response: Authentication result and admin status.
+        """
         try:
             email = request.data.get('email')
             password = request.data.get('password')
@@ -374,8 +366,10 @@ class LoginView(APIView):
                 login(request, user)
                 return Response({
                     'message': 'Login successful',
+                    'authenticated': True,
+                    'username': user.username,
                     'is_admin': user.is_admin,
-                    'authenticated': True
+                    'name': user.first_name,
                 })
             else:
                 return Response({
@@ -389,10 +383,25 @@ class LoginView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 class RegisterView(APIView):
+    """
+    API view to register a new user.
+    """
 
     @staticmethod
     def post(request):
+        """
+        Register a new user with name, email, and password.
+
+        Request Body:
+            - name (str): User's full name.
+            - email (str): User's email (also used as username).
+            - password (str): User's password.
+
+        Returns:
+            Response: Registration success message or error.
+        """
         try:
             name = request.data.get('name')
             email = request.data.get('email')
@@ -406,14 +415,25 @@ class RegisterView(APIView):
             return Response({'error': str(e), 'result': 'Failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 class LogoutView(APIView):
+    """
+    API view to log out an authenticated user.
+    """
 
     @staticmethod
     def post(request):
+        """
+        Log out the current user.
+
+        Returns:
+            Response: Success message on logout.
+        """
         try:
             logout(request)
             return Response({'message': 'Successfully logged out.'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 

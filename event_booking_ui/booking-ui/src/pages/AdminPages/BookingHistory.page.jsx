@@ -25,7 +25,7 @@ const BookingHistory = () => {
   }, []);
 
   useEffect(() => {
-    if (response) {
+    if (response?.result === 'Success') {
       setBookings(response.data || []);
       setPagination((prev) => ({
         ...prev,
