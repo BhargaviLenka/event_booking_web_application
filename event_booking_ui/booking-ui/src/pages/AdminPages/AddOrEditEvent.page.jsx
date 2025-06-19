@@ -115,6 +115,7 @@ const CalendarSlotManager = () => {
     });
     setConfirmModal(false);
     setShowModal(false);
+    setSelectedCategory('');
   };
 
   const handleConfirmBooking = () => {
@@ -130,7 +131,7 @@ const CalendarSlotManager = () => {
     });
     setConfirmModal(false);
     setShowModal(false);
-    
+    setSelectedCategory('');
   };
 
   const handleDeleteSlot = () => {
@@ -140,10 +141,12 @@ const CalendarSlotManager = () => {
       data: { date: selectedSlot.date, time_slot: selectedSlot.slot }
     });
     setToast({ show: true, message: 'Slot deleted successfully.', variant: 'success' });
+    setSelectedCategory('');
   };
 
-  const showToast = (message, variant = 'success') => {
-    setToast({ show: true, message, variant });
+  const handleCloseModal = () => {
+  setSelectedCategory('');  
+  setShowModal(false);
   };
 
   const filteredWeekDates = filterCategory
@@ -271,7 +274,7 @@ const CalendarSlotManager = () => {
         )}
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      <Modal show={showModal} onHide={handleCloseModal}>
         <Modal.Header closeButton><Modal.Title>Select Category</Modal.Title></Modal.Header>
         <Modal.Body>
           <Form.Select value={selectedCategory || selectedSlot?.category} onChange={(e) => setSelectedCategory(e.target.value)}>
@@ -280,7 +283,7 @@ const CalendarSlotManager = () => {
           </Form.Select>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
           <Button variant="primary" onClick={handleConfirmAvailability}>Confirm</Button>
         </Modal.Footer>
       </Modal>
