@@ -60,10 +60,16 @@ It enables users to book event time slots, view their booking history, and admin
 > Backend URL: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 ---
 
-# Admin credentials
+# Admin Credentials
 
 usename - admin@gmail.com
 password - admin@123
+
+
+# User Credentials
+
+username - bhagi@gmail.com
+password - 123123
 
 ---
 
